@@ -1,35 +1,42 @@
-// src/screens/MenuPage.js
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from "react-native";
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-// Detecta se é web ou mobile baseado na largura
 const isWeb = width > 768;
-const isMobile = width < 768;
-const isTablet = width >= 768 && width <= 1024;
 
-const MenuPage = ({ onNavigate }) => {
+const Menu = ({ navigation }) => { 
   const menuItems = [
-    { key: "Mapa", label: " Mapa", bgColor: "#2196F3", shadowColor: "#1976D2" },
-    { key: "Ocorrencias", label: " Ocorrências", bgColor: "#FF9800", shadowColor: "#F57C00" },
-    { key: "Perfil", label: "Perfil", bgColor: "#2196F3", shadowColor: "#1976D2" },
-    { key: "Sair", label: " Sair", bgColor: "#FF9800", shadowColor: "#F57C00" },
+    { key: "Mapa", label: "Mapa", bgColor: "#2196F3", shadowColor: "#1976D2" },
+    { key: "Ocorrencias", label: "Ocorrências", bgColor: "#FF9800", shadowColor: "#F57C00" },
+    { key: "Features", label: "Funcionalidades", bgColor: "#2196F3", shadowColor: "#1976D2" },
+    { key: "Userterms", label: "Termos de Usuário", bgColor: "#FF9800", shadowColor: "#F57C00" },
+    { key: "Aboutus", label: "Sobre Nós", bgColor: "#2196F3", shadowColor: "#1976D2" },
+    { key: "Profile", label: "Perfil", bgColor: "#FF9800", shadowColor: "#F57C00" },
+    { key: "Sair", label: "Sair", bgColor: "#2196F3", shadowColor: "#1976D2" },
   ];
+
+  const handlePress = (screenName) => {
+    if (screenName === "Sair") {
+      navigation.navigate('Login'); 
+    } else {
+      navigation.navigate(screenName);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {/* Content Wrapper com largura máxima */}
-      <View style={styles.contentWrapper}>
-        {/* Header */}
+      <ScrollView 
+        style={styles.contentWrapper}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Menu Principal</Text>
           <Text style={styles.subtitle}>Escolha uma opção abaixo</Text>
         </View>
 
-        {/* Menu Grid */}
         <View style={styles.menuGrid}>
-          {menuItems.map((item, index) => (
+          {menuItems.map((item) => (
             <TouchableOpacity
               key={item.key}
               style={[
@@ -37,7 +44,7 @@ const MenuPage = ({ onNavigate }) => {
                 { backgroundColor: item.bgColor },
                 styles.cardShadow,
               ]}
-              onPress={() => onNavigate(item.key)}
+              onPress={() => handlePress(item.key)}
               activeOpacity={0.9}
             >
               <View style={styles.cardContent}>
@@ -48,11 +55,10 @@ const MenuPage = ({ onNavigate }) => {
           ))}
         </View>
 
-        {/* Footer decorativo */}
         <View style={styles.footer}>
           <View style={styles.decorativeBar} />
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -62,22 +68,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#ffffff",
     paddingHorizontal: isWeb ? 40 : 20,
-    paddingVertical: isWeb ? 60 : 40,
-    alignItems: "center", // Centraliza o conteúdo na web
+    paddingTop: isWeb ? 60 : 40,
+    alignItems: "center", 
   },
-  
   contentWrapper: {
     width: "100%",
-    maxWidth: isWeb ? 600 : "100%", // Largura máxima na web
-    flex: 1,
+    maxWidth: isWeb ? 600 : "100%",
   },
-  
   header: {
     alignItems: "center",
     marginBottom: isWeb ? 60 : 40,
-    paddingTop: isWeb ? 40 : 20,
   },
-  
   title: {
     fontSize: isWeb ? 42 : 32,
     fontWeight: "800",
@@ -86,21 +87,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textAlign: "center",
   },
-  
   subtitle: {
     fontSize: isWeb ? 18 : 16,
     color: "#666",
     fontWeight: "500",
     textAlign: "center",
   },
-  
   menuGrid: {
-    flex: 1,
     justifyContent: "center",
     gap: isWeb ? 25 : 20,
     paddingHorizontal: isWeb ? 20 : 0,
   },
-  
   menuCard: {
     height: isWeb ? 100 : 80,
     borderRadius: isWeb ? 20 : 16,
@@ -108,11 +105,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
     ...(isWeb && {
-      // Hover effect para web
       cursor: "pointer",
     }),
   },
-  
   cardShadow: {
     shadowColor: "#000",
     shadowOffset: {
@@ -123,14 +118,12 @@ const styles = StyleSheet.create({
     shadowRadius: isWeb ? 12 : 8,
     elevation: isWeb ? 8 : 6,
   },
-  
   cardContent: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: isWeb ? 30 : 20,
   },
-  
   cardText: {
     color: "#ffffff",
     fontSize: isWeb ? 22 : 18,
@@ -138,7 +131,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textAlign: "center",
   },
-  
   cardAccent: {
     position: "absolute",
     bottom: 0,
@@ -146,13 +138,11 @@ const styles = StyleSheet.create({
     right: 0,
     height: isWeb ? 6 : 4,
   },
-  
   footer: {
     alignItems: "center",
     marginTop: isWeb ? 60 : 40,
     paddingBottom: isWeb ? 40 : 20,
   },
-  
   decorativeBar: {
     width: isWeb ? 160 : 120,
     height: isWeb ? 8 : 6,
@@ -161,4 +151,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MenuPage;
+export default Menu;
