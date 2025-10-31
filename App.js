@@ -12,6 +12,7 @@ import Aboutus from "./src/screens/Aboutus";
 import Userterms from "./src/screens/Userterms";
 import Features from "./src/screens/Features";
 import Profile from "./src/screens/Profile";
+import ChatbotScreen from "./src/screens/ChabotScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -31,6 +32,7 @@ export default function App() {
         <Stack.Screen name="Userterms" component={Userterms} />
         <Stack.Screen name="Features" component={Features} />
         <Stack.Screen name="Profile" component={Profile} />
+        <Stack.Screen name="ChatbotScreen" component={ChatbotScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
