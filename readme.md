@@ -24,4 +24,4 @@ npm install --force
 
 ---
 
-✅ Após a instalação, verifique se o projeto roda corretamente com o comando apropriado (ex: `npm run web`);
+✅ Após a instalação, verifique se o projeto roda corretamente com o comando apropriado (ex: `npm start`);

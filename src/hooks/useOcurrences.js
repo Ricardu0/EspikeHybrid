@@ -1,58 +1,83 @@
-import { useState, useCallback } from 'react';
-import { occurrenceService } from '../services/occurrenceService';
-import { useApi } from './useApi';
+import { useState, useEffect } from 'react';
+import { occurrenceService } from '../services/ocurrenceService';
 
-// Hook específico para gerenciar ocorrências
 export const useOccurrences = () => {
   const [occurrences, setOccurrences] = useState([]);
-  
-  // Buscar todas as ocorrências
-  const { loading: loadingOccurrences, error: occurrencesError, execute: fetchOccurrences } = useApi(
-    useCallback(async () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Carregar occurrences ao inicializar
+  useEffect(() => {
+    loadOccurrences();
+  }, []);
+
+  const loadOccurrences = async () => {
+    setLoading(true);
+    setError(null);
+    try {
       const data = await occurrenceService.getAll();
       setOccurrences(data);
-      return data;
-    }, []),
-    true // carrega automaticamente
-  );
+    } catch (err) {
+      setError(err.message);
+      console.error('Failed to load occurrences:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Criar nova ocorrência
-  const { loading: creatingOccurrence, error: createError, execute: createOccurrence } = useApi(
-    useCallback(async (occurrenceData) => {
+  const addOccurrence = async (occurrenceData) => {
+    setLoading(true);
+    setError(null);
+    try {
       const newOccurrence = await occurrenceService.create(occurrenceData);
       setOccurrences(prev => [...prev, newOccurrence]);
       return newOccurrence;
-    }, [])
-  );
-
-  // Atualizar ocorrência (atualização otimista)
-  const updateOccurrence = useCallback(async (id, updatedData) => {
-    const previousOccurrences = [...occurrences];
-    
-    // Atualização otimista
-    setOccurrences(prev => 
-      prev.map(occurrence => 
-        occurrence.id === id ? { ...occurrence, ...updatedData } : occurrence
-      )
-    );
-
-    try {
-      const result = await occurrenceService.update(id, updatedData);
-      return result;
-    } catch (error) {
-      // Revert em caso de erro
-      setOccurrences(previousOccurrences);
-      throw error;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
     }
-  }, [occurrences]);
+  };
+
+  const updateOccurrence = async (id, occurrenceData) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const updatedOccurrence = await occurrenceService.update(id, occurrenceData);
+      setOccurrences(prev => 
+        prev.map(occ => occ.id === id ? updatedOccurrence : occ)
+      );
+      return updatedOccurrence;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteOccurrence = async (id) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await occurrenceService.delete(id);
+      setOccurrences(prev => prev.filter(occ => occ.id !== id));
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return {
     occurrences,
-    loading: loadingOccurrences || creatingOccurrence,
-    error: occurrencesError || createError,
-    fetchOccurrences,
-    createOccurrence,
+    loading,
+    error,
+    addOccurrence,
     updateOccurrence,
-    setOccurrences
+    deleteOccurrence,
+    refreshOccurrences: loadOccurrences
   };
 };

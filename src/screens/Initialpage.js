@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { View, StyleSheet, Alert, Platform } from "react-native";
 
 import MapComponent from "../components/MapComponent";
@@ -6,9 +6,14 @@ import FloatingButtons from "../components/FloatingButtons";
 import OccurrenceForm from "../components/OcurrenceForm";
 import AreaRatingForm from "../components/AreaRatingForm";
 import Legend from "../components/Legend";
-import { TYPE_CONFIG, getRatingColor } from "../utils/helpers";
+import  {useOccurrences} from "../hooks/useOcurrences"; // 👈 Hook de API
 
 const Initialpage = ({ navigation }) => {
+  // === Ocorrências vindas da API ===
+  const { occurrences: markers, loading, error, addOccurrence } = useOccurrences();
+
+  // === Estados locais ===
+  const [localLoading, setLocalLoading] = useState(false);
   const [showOccurrenceForm, setShowOccurrenceForm] = useState(false);
   const [showAreaForm, setShowAreaForm] = useState(false);
   const [selectedMarker, setSelectedMarker] = useState(null);
@@ -29,14 +34,8 @@ const Initialpage = ({ navigation }) => {
     lighting: 0,
     infrastructure: 0,
     policing: 0,
-    comments: ""
+    comments: "",
   });
-
-  const [markers, setMarkers] = useState([
-    { id: 1, type: "Crime", description: "Roubo reportado", coordinate: { lat: -23.5505, lng: -46.6333 } },
-    { id: 2, type: "Acidente", description: "Acidente de trânsito", coordinate: { lat: -23.5515, lng: -46.6343 } },
-    { id: 3, type: "Outro", description: "Atividade suspeita", coordinate: { lat: -23.5525, lng: -46.6353 } },
-  ]);
 
   const [areas, setAreas] = useState([
     {
@@ -46,7 +45,7 @@ const Initialpage = ({ navigation }) => {
         [-23.5505, -46.6333],
         [-23.5515, -46.6333],
         [-23.5515, -46.6343],
-        [-23.5505, -46.6343]
+        [-23.5505, -46.6343],
       ],
       ratings: {
         overall: 4,
@@ -54,16 +53,24 @@ const Initialpage = ({ navigation }) => {
         lighting: 4,
         infrastructure: 5,
         policing: 2,
-        comments: "Boa infraestrutura mas policiamento insuficiente"
-      }
-    }
+        comments: "Boa infraestrutura mas policiamento insuficiente",
+      },
+    },
   ]);
 
   const userLocation = { lat: -23.5505, lng: -46.6333 };
   const webviewRef = useRef();
 
+  // === Mostrar erros da API ===
+  useEffect(() => {
+    if (error) {
+      Alert.alert("Erro", `Falha ao carregar ocorrências: ${error}`);
+    }
+  }, [error]);
+
+  // === Ações ===
   const navigateToChatbot = () => {
-    navigation.navigate('ChatbotScreen');
+    navigation.navigate("ChatbotScreen");
   };
 
   const openOccurrenceFormWithCoord = (latlng) => {
@@ -71,33 +78,48 @@ const Initialpage = ({ navigation }) => {
     setShowOccurrenceForm(true);
   };
 
-  const submitOccurrence = () => {
+  // === Enviar ocorrência via API ===
+  const submitOccurrence = async () => {
     if (!occurrenceData.description) {
       Alert.alert("Erro", "Preencha a descrição");
       return;
     }
-    const coord = occurrenceData.coord || {
-      lat: userLocation.lat + (Math.random() - 0.5) * 0.01,
-      lng: userLocation.lng + (Math.random() - 0.5) * 0.01,
-    };
-    const newMarker = { 
-      id: Date.now(), 
-      type: occurrenceData.type, 
-      description: occurrenceData.description, 
-      coordinate: { lat: coord.lat, lng: coord.lng } 
-    };
-    
-    setMarkers(prev => [...prev, newMarker]);
-    setShowOccurrenceForm(false);
-    setOccurrenceData({ description: "", type: "Crime", coord: null });
-    setSelectedMarker(newMarker);
 
-    if (Platform.OS !== "web" && webviewRef.current) {
-      const script = `(function(){ if(window.__handleAddMarker){ window.__handleAddMarker(${JSON.stringify(newMarker)}); }})(); true;`;
-      webviewRef.current.injectJavaScript(script);
+    setLocalLoading(true);
+    try {
+      const coord =
+        occurrenceData.coord || {
+          lat: userLocation.lat + (Math.random() - 0.5) * 0.01,
+          lng: userLocation.lng + (Math.random() - 0.5) * 0.01,
+        };
+
+      const occurrenceToSave = {
+        description: occurrenceData.description,
+        type: occurrenceData.type,
+        coord: coord,
+      };
+
+      // Chama API
+      const newMarker = await addOccurrence(occurrenceToSave);
+
+      setShowOccurrenceForm(false);
+      setOccurrenceData({ description: "", type: "Crime", coord: null });
+      setSelectedMarker(newMarker);
+
+      // Atualiza mapa
+      if (Platform.OS !== "web" && webviewRef.current) {
+        const script = `(function(){ if(window.__handleAddMarker){ window.__handleAddMarker(${JSON.stringify(
+          newMarker
+        )}); }})(); true;`;
+        webviewRef.current.injectJavaScript(script);
+      }
+
+      Alert.alert("Sucesso", "Ocorrência registrada!");
+    } catch (err) {
+      Alert.alert("Erro", "Não foi possível registrar a ocorrência");
+    } finally {
+      setLocalLoading(false);
     }
-
-    Alert.alert("Sucesso", "Ocorrência registrada!");
   };
 
   const submitAreaRating = () => {
@@ -106,7 +128,7 @@ const Initialpage = ({ navigation }) => {
       return;
     }
 
-    const updatedAreas = areas.map(area => {
+    const updatedAreas = areas.map((area) => {
       if (area.id === selectedArea.id) {
         return { ...area, ratings: areaRatingData };
       }
@@ -121,27 +143,29 @@ const Initialpage = ({ navigation }) => {
       lighting: 0,
       infrastructure: 0,
       policing: 0,
-      comments: ""
+      comments: "",
     });
     Alert.alert("Sucesso", "Avaliação registrada!");
   };
 
   const handleAreaClick = (area) => {
     setSelectedArea(area);
-    setAreaRatingData(area.ratings || {
-      overall: 0,
-      risk: 0,
-      lighting: 0,
-      infrastructure: 0,
-      policing: 0,
-      comments: ""
-    });
+    setAreaRatingData(
+      area.ratings || {
+        overall: 0,
+        risk: 0,
+        lighting: 0,
+        infrastructure: 0,
+        policing: 0,
+        comments: "",
+      }
+    );
     setShowAreaForm(true);
   };
 
   const handleMapClick = (latlng) => {
     if (drawingMode) {
-      setCurrentPolygon(prev => [...prev, [latlng.lat, latlng.lng]]);
+      setCurrentPolygon((prev) => [...prev, [latlng.lat, latlng.lng]]);
     } else {
       openOccurrenceFormWithCoord({ lat: latlng.lat, lng: latlng.lng });
     }
@@ -163,16 +187,17 @@ const Initialpage = ({ navigation }) => {
         lighting: 0,
         infrastructure: 0,
         policing: 0,
-        comments: ""
-      }
+        comments: "",
+      },
     };
 
-    setAreas(prev => [...prev, newArea]);
+    setAreas((prev) => [...prev, newArea]);
     setCurrentPolygon([]);
     setDrawingMode(false);
     Alert.alert("Sucesso", "Área criada! Agora você pode avaliá-la.");
   };
 
+  // === Render ===
   return (
     <View style={styles.pageWrapper}>
       <View style={styles.mapWrapper}>
@@ -188,7 +213,7 @@ const Initialpage = ({ navigation }) => {
           onMarkerClick={setSelectedMarker}
           webviewRef={webviewRef}
         />
-        
+
         <Legend
           showZones={showZones}
           setShowZones={setShowZones}
@@ -216,6 +241,7 @@ const Initialpage = ({ navigation }) => {
         occurrenceData={occurrenceData}
         setOccurrenceData={setOccurrenceData}
         onSubmit={submitOccurrence}
+        loading={localLoading} // 👈 Mostra "Registrando..."
       />
 
       <AreaRatingForm
@@ -233,18 +259,18 @@ const Initialpage = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  pageWrapper: { 
-    flex: 1, 
-    padding: 1, 
-    backgroundColor: "#fff" 
+  pageWrapper: {
+    flex: 1,
+    padding: 1,
+    backgroundColor: "#fff",
   },
-  mapWrapper: { 
-    flex: 1, 
-    borderRadius: 8, 
-    overflow: "hidden", 
-    backgroundColor: "#f8f9fa", 
-    borderWidth: 1, 
-    borderColor: "#eee" 
+  mapWrapper: {
+    flex: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "#f8f9fa",
+    borderWidth: 1,
+    borderColor: "#eee",
   },
 });
 

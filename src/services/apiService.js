@@ -26,7 +26,7 @@ class ApiService {
       }
 
       const data = await response.json();
-      return { data, status: response.status };
+      return data;
     } catch (error) {
       console.error('API Request failed:', error);
       throw error;
@@ -51,4 +51,5 @@ class ApiService {
 }
 
 // Instância global do serviço API
-export const apiClient = new ApiService(process.env.REACT_APP_API_URL || 'https://sua-api.com/api');
+export const apiClient = new ApiService(process.env.REACT_APP_API_URL || 'http://localhost:5174/api');
+export const apiService = new ApiService(process.env.REACT_APP_API_URL || 'http://localhost:5174/api');
