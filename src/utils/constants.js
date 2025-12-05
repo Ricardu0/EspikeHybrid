@@ -1,6 +1,6 @@
 // Configurações da API
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:5174/api', // Ajuste para sua URL
+  BASE_URL: 'https://espike-backend.onrender.com', // Ajuste para sua URL
   ENDPOINTS: {
     OCCURRENCES: '/occurrences',
     // Adicione outros endpoints aqui no futuro
