@@ -51,5 +51,5 @@ class ApiService {
 }
 
 // Instância global do serviço API
-export const apiClient = new ApiService(process.env.REACT_APP_API_URL || 'http://localhost:5174/api');
-export const apiService = new ApiService(process.env.REACT_APP_API_URL || 'http://localhost:5174/api');
+export const apiClient = new ApiService(process.env.REACT_APP_API_URL || 'https://espike-backend.onrender.com/api');
+export const apiService = new ApiService(process.env.REACT_APP_API_URL || 'https://espike-backend.onrender.com/api');
