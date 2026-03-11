@@ -9,6 +9,7 @@ const Menu = ({ navigation }) => {
   const menuItems = [
     { key: "Mapa", label: "Mapa", bgColor: "#2196F3", shadowColor: "#1976D2" },
     { key: "Ocorrencias", label: "Ocorrências", bgColor: "#FF9800", shadowColor: "#F57C00" },
+    { key: "Agradecimentos", label: "Agradecimentos", bgColor: "#2196F3", shadowColor: "#e600ff" },
     { key: "Features", label: "Funcionalidades", bgColor: "#2196F3", shadowColor: "#1976D2" },
     { key: "Userterms", label: "Termos de Usuário", bgColor: "#FF9800", shadowColor: "#F57C00" },
     { key: "Aboutus", label: "Sobre Nós", bgColor: "#2196F3", shadowColor: "#1976D2" },

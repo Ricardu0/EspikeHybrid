@@ -1,6 +1,7 @@
 import * as React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import Agradecimentos from "./src/screens/Agradecimentos";
 
 // Importar telas
 import Home from "./src/screens/Home";
@@ -33,6 +34,7 @@ export default function App() {
         <Stack.Screen name="Features" component={Features} />
         <Stack.Screen name="Profile" component={Profile} />
         <Stack.Screen name="ChatbotScreen" component={ChatbotScreen} />
+        <Stack.Screen name="Agradecimentos" component={Agradecimentos} />
       </Stack.Navigator>
     </NavigationContainer>
   );
