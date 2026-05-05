@@ -65,6 +65,12 @@ app.use('/api/markers', markerRoutes);
 //rota para areas (zonas)
 app.use('/api/areas', areaRoutes); // <-- ESTA FOI A LINHA ADICIONADA
 
+// Rota para reportes de foto (nova funcionalidade Azure)
+const photoReportRoutes = require('./controller/PhotoReportController');
+app.use('/api/photo-reports', photoReportRoutes);
+
+
+
 // Iniciar o servidor
 const PORT = process.env.PORT || 5174;
 app.listen(PORT, () => {

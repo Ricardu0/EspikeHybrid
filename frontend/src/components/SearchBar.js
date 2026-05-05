@@ -2,6 +2,11 @@
  * SearchBar.js
  * Barra de busca de endereços para o WebMap (Leaflet / react-leaflet).
  *
+ * MUDANÇA UI/UX:
+ *   Aceita prop `visible` (boolean). Quando false, a SearchUI (portal) é
+ *   desmontada — útil para ocultar a busca enquanto o menu estiver aberto
+ *   ou a tela não estiver em foco.
+ *
  * ARQUITETURA:
  *   O componente tem duas partes separadas:
  *   1. <MapFlyTo> — fica DENTRO do MapContainer (usa useMap do react-leaflet)
@@ -9,7 +14,7 @@
  *      escapando do MapContainer que não suporta DOM arbitrário como filho.
  *
  * Uso em WebMap.js (dentro do MapContainer):
- *   <SearchBar mapComponents={mapComponents} />
+ *   <SearchBar mapComponents={mapComponents} visible={isScreenFocused} />
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -20,7 +25,7 @@ import ReactDOM from 'react-dom';
 // Constantes
 // ---------------------------------------------------------------------------
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
-const VIEWBOX       = '-53.1,-25.3,-44.1,-19.7';   // bbox estado SP + arredores
+const VIEWBOX       = '-53.1,-25.3,-44.1,-19.7';
 const DEBOUNCE_MS   = 400;
 const MAX_RESULTS   = 6;
 
@@ -58,7 +63,7 @@ async function buscarNominatim(query) {
 }
 
 // ---------------------------------------------------------------------------
-// Parte 1: flyTo — precisa estar DENTRO do MapContainer para usar useMap
+// Parte 1: flyTo — precisa estar DENTRO do MapContainer
 // ---------------------------------------------------------------------------
 function MapFlyTo({ target, useMap }) {
     const map = useMap();
@@ -70,7 +75,7 @@ function MapFlyTo({ target, useMap }) {
 }
 
 // ---------------------------------------------------------------------------
-// Ícone por categoria Nominatim
+// Ícone por categoria
 // ---------------------------------------------------------------------------
 function categoryIcon(category, type) {
     if (category === 'highway' || type === 'residential') return '🛣️';
@@ -94,7 +99,6 @@ function SearchUI({ onSelect }) {
     const timerRef     = useRef(null);
     const containerRef = useRef(null);
 
-    // Debounce da busca
     useEffect(() => {
         if (timerRef.current) clearTimeout(timerRef.current);
         if (!query || query.trim().length < 3) {
@@ -112,7 +116,6 @@ function SearchUI({ onSelect }) {
         return () => clearTimeout(timerRef.current);
     }, [query]);
 
-    // Fechar ao clicar fora
     useEffect(() => {
         const handler = (e) => {
             if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -144,24 +147,34 @@ function SearchUI({ onSelect }) {
             onTouchStart={stopProp}
             onWheel={stopProp}
             style={{
-                position:  'fixed',
-                top:       12,
-                left:      '50%',
-                transform: 'translateX(-50%)',
-                zIndex:    99999,
-                width:     360,
-                maxWidth:  'calc(100vw - 32px)',
+                position:   'fixed',
+                top:        12,
+                left:       '50%',
+                transform:  'translateX(-50%)',
+                zIndex:     99999,
+                width:      360,
+                maxWidth:   'calc(100vw - 32px)',
                 fontFamily: 'system-ui, sans-serif',
+                // Fade-in suave ao aparecer
+                animation:  'sbFadeIn 0.18s ease',
             }}
         >
+            {/* Injetar animação uma vez */}
+            <style>{`
+                @keyframes sbFadeIn {
+                    from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+                    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+                }
+            `}</style>
+
             {/* Input */}
             <div style={{
                 display: 'flex', alignItems: 'center',
                 background: '#fff', borderRadius: 24,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
-                padding: '6px 14px', gap: 8,
+                boxShadow: '0 2px 12px rgba(0,0,0,0.18)',
+                padding: '7px 14px', gap: 8,
             }}>
-                <span style={{ fontSize: 15, opacity: 0.5 }}>🔍</span>
+                <span style={{ fontSize: 15, opacity: 0.45 }}>🔍</span>
                 <input
                     type="text"
                     value={query}
@@ -177,7 +190,7 @@ function SearchUI({ onSelect }) {
                 {query.length > 0 && (
                     <button
                         onClick={() => { setQuery(''); setSugestoes([]); setAberto(false); }}
-                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, color: '#aaa' }}
+                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13, color: '#aaa', padding: 0 }}
                     >✕</button>
                 )}
                 {carregando && <span style={{ fontSize: 13 }}>⏳</span>}
@@ -188,7 +201,7 @@ function SearchUI({ onSelect }) {
                 <ul style={{
                     listStyle: 'none', margin: '4px 0 0', padding: 0,
                     background: '#fff', borderRadius: 12,
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.13)',
                     overflow: 'hidden', maxHeight: 280, overflowY: 'auto',
                 }}>
                     {sugestoes.map((item, i) => (
@@ -224,14 +237,18 @@ function SearchUI({ onSelect }) {
         </div>
     );
 
-    // Portal para document.body — escapa do MapContainer
     return ReactDOM.createPortal(ui, document.body);
 }
 
 // ---------------------------------------------------------------------------
-// Componente exportado — combina MapFlyTo (dentro do mapa) + SearchUI (portal)
+// Componente exportado
 // ---------------------------------------------------------------------------
-const SearchBar = ({ mapComponents }) => {
+/**
+ * @param {object}  props
+ * @param {object}  props.mapComponents   - Objeto com { useMap } do react-leaflet
+ * @param {boolean} [props.visible=true]  - false = esconde a search bar (ex: quando menu está aberto)
+ */
+const SearchBar = ({ mapComponents, visible = true }) => {
     if (Platform.OS !== 'web') return null;
     if (!mapComponents?.useMap) return null;
 
@@ -243,11 +260,11 @@ const SearchBar = ({ mapComponents }) => {
 
     return (
         <>
-            {/* Parte dentro do MapContainer — acessa useMap para flyTo */}
+            {/* MapFlyTo sempre montado para não perder o contexto do mapa */}
             <MapFlyTo target={flyTarget} useMap={mapComponents.useMap} />
 
-            {/* UI renderizada via portal — não é filho do MapContainer no DOM */}
-            <SearchUI onSelect={handleSelect} />
+            {/* SearchUI só renderiza quando visible=true */}
+            {visible && <SearchUI onSelect={handleSelect} />}
         </>
     );
 };

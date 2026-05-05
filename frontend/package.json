@@ -9,12 +9,16 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.17.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/native": "^7.1.17",
     "@react-navigation/native-stack": "^7.3.26",
     "expo": "~54.0.9",
+    "expo-image-picker": "~17.0.11",
+    "expo-location": "~19.0.8",
     "expo-status-bar": "~3.0.8",
     "leaflet": "^1.9.4",
+    "multer": "^1.4.5-lts.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-leaflet": "^5.0.0",
@@ -33,6 +37,7 @@
   "devDependencies": {
     "@react-native-community/cli": "^20.0.2",
     "@types/react": "~19.1.10",
+    "baseline-browser-mapping": "^2.10.7",
     "typescript": "~5.9.2"
   }
 }

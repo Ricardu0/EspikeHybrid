@@ -14,6 +14,7 @@ import Userterms from "./src/screens/Userterms";
 import Features from "./src/screens/Features";
 import Profile from "./src/screens/Profile";
 import ChatbotScreen from "./src/screens/ChabotScreen";
+import PhotoReportScreen from "./src/screens/PhotoReportScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -35,6 +36,15 @@ export default function App() {
         <Stack.Screen name="Profile" component={Profile} />
         <Stack.Screen name="ChatbotScreen" component={ChatbotScreen} />
         <Stack.Screen name="Agradecimentos" component={Agradecimentos} />
+        <Stack.Screen
+            name="PhotoReportScreen"
+            component={PhotoReportScreen}
+            options={{
+              title: '📸 Reporte Rápido',
+              headerStyle: { backgroundColor: '#007AFF' },
+              headerTintColor: '#fff'
+            }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

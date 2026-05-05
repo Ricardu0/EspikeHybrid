@@ -2,13 +2,11 @@
  * HexagonLayer.js
  * Camada de hexágonos de criminalidade para o WebMap (Leaflet / react-leaflet).
  *
- * Usado APENAS na versão web. Recebe hexagonosVisiveis do hook useHexagonos
- * e renderiza Polygon do react-leaflet para cada hexágono.
- *
- * Integração em WebMap.js:
- *   import HexagonLayer from './HexagonLayer';
- *   // Dentro de <MapContainer>:
- *   <HexagonLayer hexagonos={hexagonosVisiveis} mapComponents={mapComponents} />
+ * MUDANÇAS UI/UX:
+ *   - Aceita prop `showHexagons` (boolean, default false). Se false, nada é renderizado.
+ *   - Fill opacity reduzida de 0.55 → 0.18 (borda visível, mapa base legível).
+ *   - Opacity da borda reduzida de 0.8 → 0.55 para visual mais suave.
+ *   - O estado padrão da camada é DESATIVADO — o usuário ativa via toggle na Legend.
  */
 
 import React, { useMemo } from 'react';
@@ -18,29 +16,13 @@ import { Platform } from 'react-native';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Converte coordenadas do JSON [lat, lng] para o formato do Leaflet [lat, lng].
- * Se o JSON já vier como { lat, lng }, também funciona.
- */
 function normalizarCoordenadas(coordinates) {
     if (!Array.isArray(coordinates)) return [];
     return coordinates.map(c => {
-        if (Array.isArray(c)) return [c[0], c[1]]; // [lat, lng]
-        if (c && typeof c === 'object') return [c.lat, c.lng]; // { lat, lng }
+        if (Array.isArray(c)) return [c[0], c[1]];
+        if (c && typeof c === 'object') return [c.lat, c.lng];
         return c;
     });
-}
-
-/**
- * Converte cor hex + opacidade em string rgba para fillColor do Leaflet.
- * Ex.: '#B71C1C', 0.65 → 'rgba(183,28,28,0.65)'
- */
-function hexParaRgba(hex, opacity) {
-    const clean = hex.replace('#', '');
-    const r = parseInt(clean.substring(0, 2), 16);
-    const g = parseInt(clean.substring(2, 4), 16);
-    const b = parseInt(clean.substring(4, 6), 16);
-    return `rgba(${r},${g},${b},${opacity})`;
 }
 
 // ---------------------------------------------------------------------------
@@ -51,11 +33,15 @@ const Hexagono = React.memo(({ hex, Polygon, onPress }) => {
     const posicoes = useMemo(() => normalizarCoordenadas(hex.coordinates), [hex.coordinates]);
 
     const pathOptions = useMemo(() => ({
-        fillColor: hex.color,
-        fillOpacity: hex.fill_opacity ?? 0.55,
-        color: hex.color,
-        weight: 1,
-        opacity: 0.8,
+        // Fill bem transparente: mapa base fica legível
+        fillColor:   hex.color,
+        fillOpacity: hex.fill_opacity != null
+            ? Math.min(hex.fill_opacity * 0.32, 0.22)   // escala: max 0.22
+            : 0.18,
+        // Borda discreta para delimitar o hexágono
+        color:   hex.color,
+        weight:  1.2,
+        opacity: 0.50,
     }), [hex.color, hex.fill_opacity]);
 
     const eventHandlers = useMemo(() => ({
@@ -78,14 +64,15 @@ const Hexagono = React.memo(({ hex, Polygon, onPress }) => {
 // ---------------------------------------------------------------------------
 
 /**
- * @param {object} props
- * @param {Array}  props.hexagonos      - Lista filtrada de hexágonos visíveis
- * @param {object} props.mapComponents  - Objeto com { Polygon } do react-leaflet
- * @param {Function} [props.onHexPress] - Callback ao clicar num hexágono
+ * @param {object}   props
+ * @param {Array}    props.hexagonos      - Lista filtrada de hexágonos visíveis
+ * @param {object}   props.mapComponents  - Objeto com { Polygon } do react-leaflet
+ * @param {boolean}  [props.showHexagons=false] - Controla visibilidade da camada
+ * @param {Function} [props.onHexPress]  - Callback ao clicar num hexágono
  */
-const HexagonLayer = ({ hexagonos = [], mapComponents, onHexPress }) => {
-    // Só renderiza no web
+const HexagonLayer = ({ hexagonos = [], mapComponents, showHexagons = false, onHexPress }) => {
     if (Platform.OS !== 'web') return null;
+    if (!showHexagons) return null;          // ← camada desativada por padrão
     if (!mapComponents?.Polygon) return null;
     if (!hexagonos.length) return null;
 

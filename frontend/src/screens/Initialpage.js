@@ -1,41 +1,38 @@
-/**
- * Initialpage.js — versão atualizada com camada de hexágonos.
- *
- * Alterações em relação ao original:
- *  1. Importa useHexagonos
- *  2. Web: WebMap consome o hook internamente (nenhuma mudança visível aqui)
- *  3. Mobile: captura 'regionChange' via postMessage → atualiza useHexagonos
- *             quando hexagonosVisiveis muda → injeta window.atualizarHexagonos()
- *             via injectJavaScript (HTML da WebView permanece estático)
- */
-
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, Alert, Platform } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Alert,
+  Platform,
+  TouchableOpacity,
+  Text
+} from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 
 import MapComponent    from '../components/MapComponent';
 import FloatingButtons from '../components/FloatingButtons';
 import OccurrenceForm  from '../components/OcurrenceForm';
 import AreaRatingForm  from '../components/AreaRatingForm';
 import Legend          from '../components/Legend';
-import { useOccurrences }  from '../hooks/useOcurrences';
-import { useHexagonos }    from '../hooks/Usehexagonos';   // ← NOVO
+import { useOccurrences } from '../hooks/useOcurrences';
+import { useHexagonos }   from '../hooks/Usehexagonos';
 
 const Initialpage = ({ navigation }) => {
-  // === Ocorrências da API ===
-  const { occurrences: markers, loading, error, addOccurrence } = useOccurrences();
+  const isScreenFocused = useIsFocused();
 
-  // === Hexágonos de criminalidade ===
-  const { hexagonosVisiveis, atualizarRegiao } = useHexagonos();   // ← NOVO
+  const { occurrences: markers, error, addOccurrence } = useOccurrences();
+  const { hexagonosVisiveis, atualizarRegiao } = useHexagonos();
 
-  // === Estados locais ===
-  const [localLoading, setLocalLoading]       = useState(false);
+  const [mobileUserLocation, setMobileUserLocation] = useState(null);
+  const [localLoading, setLocalLoading]             = useState(false);
   const [showOccurrenceForm, setShowOccurrenceForm] = useState(false);
-  const [showAreaForm, setShowAreaForm]         = useState(false);
-  const [selectedMarker, setSelectedMarker]     = useState(null);
-  const [selectedArea, setSelectedArea]         = useState(null);
-  const [showZones, setShowZones]               = useState(true);
-  const [drawingMode, setDrawingMode]           = useState(false);
-  const [currentPolygon, setCurrentPolygon]     = useState([]);
+  const [showAreaForm, setShowAreaForm]             = useState(false);
+  const [selectedMarker, setSelectedMarker]         = useState(null);
+  const [selectedArea, setSelectedArea]             = useState(null);
+  const [showZones, setShowZones]                   = useState(true);
+  const [showHexagons, setShowHexagons]             = useState(false);
+  const [drawingMode, setDrawingMode]               = useState(false);
+  const [currentPolygon, setCurrentPolygon]         = useState([]);
 
   const [occurrenceData, setOccurrenceData] = useState({
     description: '', type: 'Crime', coord: null,
@@ -51,39 +48,31 @@ const Initialpage = ({ navigation }) => {
         [-23.5505, -46.6333], [-23.5515, -46.6333],
         [-23.5515, -46.6343], [-23.5505, -46.6343],
       ],
-      ratings: { overall: 4, risk: 3, lighting: 4, infrastructure: 5, policing: 2, comments: 'Boa infraestrutura mas policiamento insuficiente' },
+      ratings: { overall: 4, risk: 3, lighting: 4, infrastructure: 5, policing: 2, comments: '' },
     },
   ]);
 
-  const userLocation = { lat: -23.5505, lng: -46.6333 };
-  const webviewRef   = useRef();
+  const webviewRef = useRef();
 
-  // === Erros da API de ocorrências ===
   useEffect(() => {
     if (error) Alert.alert('Erro', `Falha ao carregar ocorrências: ${error}`);
   }, [error]);
 
-  // === Mobile: injeta hexágonos na WebView sempre que a lista filtrada mudar ===
-  // O HTML da WebView é estático; a atualização acontece via injectJavaScript,
-  // chamando window.atualizarHexagonos() que foi definida no HTML gerado.
   useEffect(() => {
-    if (Platform.OS === 'web') return;
-    if (!webviewRef.current) return;
-
+    if (Platform.OS === 'web' || !webviewRef.current) return;
     const script = `
       (function(){
         try {
           window.atualizarHexagonos(${JSON.stringify(hexagonosVisiveis)});
-        } catch(e) {
-          console.error('Erro ao atualizar hexagonos:', e);
-        }
-      })();
-      true;
+          if(window.hexagonosLayer && !${showHexagons}){
+            window.hexagonosLayer.remove();
+          }
+        } catch(e) {}
+      })(); true;
     `;
     webviewRef.current.injectJavaScript(script);
-  }, [hexagonosVisiveis]);
+  }, [hexagonosVisiveis, showHexagons]);
 
-  // === Ações ===
   const navigateToChatbot = () => navigation.navigate('ChatbotScreen');
 
   const openOccurrenceFormWithCoord = (latlng) => {
@@ -98,11 +87,16 @@ const Initialpage = ({ navigation }) => {
     }
     setLocalLoading(true);
     try {
+      const fallback = mobileUserLocation ?? { lat: -23.5505, lng: -46.6333 };
       const coord = occurrenceData.coord || {
-        lat: userLocation.lat + (Math.random() - 0.5) * 0.01,
-        lng: userLocation.lng + (Math.random() - 0.5) * 0.01,
+        lat: fallback.lat + (Math.random() - 0.5) * 0.01,
+        lng: fallback.lng + (Math.random() - 0.5) * 0.01,
       };
-      const newMarker = await addOccurrence({ description: occurrenceData.description, type: occurrenceData.type, coord });
+      const newMarker = await addOccurrence({
+        description: occurrenceData.description,
+        type: occurrenceData.type,
+        coord,
+      });
       setShowOccurrenceForm(false);
       setOccurrenceData({ description: '', type: 'Crime', coord: null });
       setSelectedMarker(newMarker);
@@ -112,7 +106,7 @@ const Initialpage = ({ navigation }) => {
         webviewRef.current.injectJavaScript(script);
       }
       Alert.alert('Sucesso', 'Ocorrência registrada!');
-    } catch (err) {
+    } catch {
       Alert.alert('Erro', 'Não foi possível registrar a ocorrência');
     } finally {
       setLocalLoading(false);
@@ -121,7 +115,9 @@ const Initialpage = ({ navigation }) => {
 
   const submitAreaRating = () => {
     if (!areaRatingData.overall) { Alert.alert('Erro', 'Avaliação geral é obrigatória'); return; }
-    setAreas(prev => prev.map(a => a.id === selectedArea.id ? { ...a, ratings: areaRatingData } : a));
+    setAreas(prev => prev.map(a =>
+        a.id === selectedArea.id ? { ...a, ratings: areaRatingData } : a
+    ));
     setShowAreaForm(false);
     setAreaRatingData({ overall: 0, risk: 0, lighting: 0, infrastructure: 0, policing: 0, comments: '' });
     Alert.alert('Sucesso', 'Avaliação registrada!');
@@ -142,7 +138,10 @@ const Initialpage = ({ navigation }) => {
   };
 
   const finishDrawing = () => {
-    if (currentPolygon.length < 3) { Alert.alert('Erro', 'Um polígono precisa de pelo menos 3 pontos'); return; }
+    if (currentPolygon.length < 3) {
+      Alert.alert('Erro', 'Um polígono precisa de pelo menos 3 pontos');
+      return;
+    }
     const newArea = {
       id: Date.now(),
       name: `Área ${areas.length + 1}`,
@@ -155,25 +154,20 @@ const Initialpage = ({ navigation }) => {
     Alert.alert('Sucesso', 'Área criada! Agora você pode avaliá-la.');
   };
 
-  // ── Handler de mensagens da WebView (mobile) ───────────────────────────
-  // Trata três tipos de evento vindos do Leaflet via postMessage:
-  //   regionChange → atualiza useHexagonos para re-filtrar hexágonos visíveis
-  //   mapClick     → abre formulário de ocorrência / adiciona ponto ao polígono
-  //   areaClick    → abre formulário de avaliação da área
   const handleWebViewMessage = (e) => {
     try {
       const data = JSON.parse(e.nativeEvent.data);
-
+      if (data?.type === 'userLocation' && data?.lat && data?.lng) {
+        setMobileUserLocation({ lat: data.lat, lng: data.lng });
+        return;
+      }
       if (data?.type === 'regionChange') {
         atualizarRegiao({
-          latitude:       data.latitude,
-          longitude:      data.longitude,
-          latitudeDelta:  data.latitudeDelta,
-          longitudeDelta: data.longitudeDelta,
+          latitude: data.latitude, longitude: data.longitude,
+          latitudeDelta: data.latitudeDelta, longitudeDelta: data.longitudeDelta,
         });
         return;
       }
-
       if (data?.type === 'mapClick' && data?.lat && data?.lng) {
         handleMapClick({ lat: data.lat, lng: data.lng });
       } else if (data?.type === 'areaClick' && data?.areaId) {
@@ -181,19 +175,20 @@ const Initialpage = ({ navigation }) => {
         if (area) handleAreaClick(area);
       }
     } catch (err) {
-      console.error('Error parsing WebView message:', err);
+      console.error('WebView message parse error:', err);
     }
   };
 
-  // === Render ===
   return (
       <View style={styles.pageWrapper}>
         <View style={styles.mapWrapper}>
           <MapComponent
-              userLocation={userLocation}
+              userLocation={Platform.OS !== 'web' ? mobileUserLocation : undefined}
               markers={markers}
               areas={areas}
               showZones={showZones}
+              showHexagons={showHexagons}
+              isScreenFocused={isScreenFocused}
               drawingMode={drawingMode}
               currentPolygon={currentPolygon}
               onMapClick={handleMapClick}
@@ -206,6 +201,8 @@ const Initialpage = ({ navigation }) => {
           <Legend
               showZones={showZones}
               setShowZones={setShowZones}
+              showHexagons={showHexagons}
+              setShowHexagons={setShowHexagons}
               drawingMode={drawingMode}
               setDrawingMode={setDrawingMode}
               onFinishDrawing={finishDrawing}
@@ -215,11 +212,23 @@ const Initialpage = ({ navigation }) => {
 
         <FloatingButtons
             navigation={navigation}
-            onAddOccurrence={() => { setOccurrenceData({ description: '', type: 'Crime', coord: null }); setShowOccurrenceForm(true); }}
+            onAddOccurrence={() => {
+              setOccurrenceData({ description: '', type: 'Crime', coord: null });
+              setShowOccurrenceForm(true);
+            }}
             drawingMode={drawingMode}
             setDrawingMode={setDrawingMode}
             navigateToChatbot={navigateToChatbot}
         />
+
+        {/* Botão para Reporte com Foto */}
+        <TouchableOpacity
+            style={styles.fabPhotoReport}
+            onPress={() => navigation.navigate('PhotoReportScreen')}
+            activeOpacity={0.8}
+        >
+          <Text style={styles.fabPhotoReportText}>📸</Text>
+        </TouchableOpacity>
 
         <OccurrenceForm
             visible={showOccurrenceForm}
@@ -238,15 +247,32 @@ const Initialpage = ({ navigation }) => {
             selectedArea={selectedArea}
             onSubmit={submitAreaRating}
         />
-
-        <View style={{ height: 6 }} />
       </View>
   );
 };
 
 const styles = StyleSheet.create({
   pageWrapper: { flex: 1, padding: 1, backgroundColor: '#fff' },
-  mapWrapper:  { flex: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#f8f9fa', borderWidth: 1, borderColor: '#eee' },
+  mapWrapper:  { flex: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#f0f4f8', borderWidth: 1, borderColor: '#eee' },
+  fabPhotoReport: {
+    position: 'absolute',
+    right: 25,
+    bottom: 180, // Posicionado acima do botão de chatbot/ocorrência padrão
+    backgroundColor: '#5856D6',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+  },
+  fabPhotoReportText: {
+    fontSize: 24,
+  },
 });
 
 export default Initialpage;

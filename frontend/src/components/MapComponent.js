@@ -1,10 +1,9 @@
 /**
- * MapComponent.js — versão atualizada.
+ * MapComponent.js
  *
- * Alteração: aceita prop `onWebViewMessage` para centralizar o tratamento de
- * mensagens da WebView no Initialpage (regionChange, mapClick, areaClick).
- * A prop `hexagonos` foi removida — os hexágonos são injetados via
- * injectJavaScript pelo Initialpage, não passados ao HTML gerado.
+ * MUDANÇA: `userLocation` agora é opcional.
+ * Para web: não é passado → WebMap resolve geolocalização internamente.
+ * Para mobile: pode ser null (WebView usa SP até receber postMessage 'userLocation').
  */
 
 import React from 'react';
@@ -12,81 +11,85 @@ import { View, Platform, StyleSheet } from 'react-native';
 
 let WebView;
 if (Platform.OS !== 'web') {
-  WebView = require('react-native-webview').WebView;
+    WebView = require('react-native-webview').WebView;
 }
 
 import WebMap from './WebMap';
 import { generateWebViewHtml } from '../utils/helpers';
 
+const SP_FALLBACK = { lat: -23.5505, lng: -46.6333 };
+
 const MapComponent = ({
-                        userLocation,
-                        markers,
-                        areas,
-                        showZones,
-                        drawingMode,
-                        currentPolygon,
-                        onMapClick,
-                        onAreaClick,
-                        onMarkerClick,
-                        webviewRef,
-                        onWebViewMessage,   // ← handler centralizado vindo do Initialpage
+                          userLocation,           // opcional — para web não é usado; para mobile vai para o HTML
+                          markers,
+                          areas,
+                          showZones,
+                          showHexagons = false,
+                          isScreenFocused = true,
+                          drawingMode,
+                          currentPolygon,
+                          onMapClick,
+                          onAreaClick,
+                          onMarkerClick,
+                          webviewRef,
+                          onWebViewMessage,
                       }) => {
+    // Fallback para geração do HTML mobile (WebView usa SP até geo resolver)
+    const mobileLocation = userLocation ?? SP_FALLBACK;
 
-  // Fallback: se nenhum handler externo for passado, trata mapClick/areaClick
-  const handleMessage = onWebViewMessage ?? ((e) => {
-    try {
-      const data = JSON.parse(e.nativeEvent.data);
-      if (data?.type === 'mapClick' && data?.lat && data?.lng) {
-        onMapClick?.({ lat: data.lat, lng: data.lng });
-      } else if (data?.type === 'areaClick' && data?.areaId) {
-        const area = areas?.find(a => a.id === data.areaId);
-        if (area) onAreaClick?.(area);
-      }
-    } catch (err) {
-      console.error('Error parsing WebView message:', err);
-    }
-  });
+    const handleMessage = onWebViewMessage ?? ((e) => {
+        try {
+            const data = JSON.parse(e.nativeEvent.data);
+            if (data?.type === 'mapClick' && data?.lat && data?.lng) {
+                onMapClick?.({ lat: data.lat, lng: data.lng });
+            } else if (data?.type === 'areaClick' && data?.areaId) {
+                const area = areas?.find(a => a.id === data.areaId);
+                if (area) onAreaClick?.(area);
+            }
+        } catch (err) {
+            console.error('WebView message error:', err);
+        }
+    });
 
-  return (
-      <View style={styles.mapContainer}>
-        {Platform.OS === 'web' ? (
-            // Web: WebMap consome useHexagonos internamente — nenhuma prop extra necessária
-            <WebMap
-                userLocation={userLocation}
-                markers={markers}
-                areas={areas}
-                showZones={showZones}
-                drawingMode={drawingMode}
-                currentPolygon={currentPolygon}
-                onMapClick={onMapClick}
-                onAreaClick={onAreaClick}
-                onMarkerClick={onMarkerClick}
-            />
-        ) : (
-            WebView && (
-                <WebView
-                    ref={webviewRef}
-                    originWhitelist={['*']}
-                    style={styles.map}
-                    source={{
-                      // HTML estático: sem hexágonos — injetados depois via injectJavaScript
-                      html: generateWebViewHtml({ markers, userLocation, areas }),
-                    }}
-                    onMessage={handleMessage}
-                    javaScriptEnabled={true}
-                    domStorageEnabled={true}
-                    startInLoadingState={true}
-                    mixedContentMode="always"
+    return (
+        <View style={styles.mapContainer}>
+            {Platform.OS === 'web' ? (
+                // Web: WebMap não recebe userLocation — ele mesmo gerencia a geo
+                <WebMap
+                    markers={markers}
+                    areas={areas}
+                    showZones={showZones}
+                    showHexagons={showHexagons}
+                    isScreenFocused={isScreenFocused}
+                    drawingMode={drawingMode}
+                    currentPolygon={currentPolygon}
+                    onMapClick={onMapClick}
+                    onAreaClick={onAreaClick}
+                    onMarkerClick={onMarkerClick}
                 />
-            )
-        )}
-      </View>
-  );
+            ) : (
+                WebView && (
+                    <WebView
+                        ref={webviewRef}
+                        originWhitelist={['*']}
+                        style={styles.map}
+                        source={{ html: generateWebViewHtml({ markers, userLocation: mobileLocation, areas }) }}
+                        onMessage={handleMessage}
+                        javaScriptEnabled={true}
+                        domStorageEnabled={true}
+                        geolocationEnabled={true}
+                        startInLoadingState={true}
+                        mixedContentMode="always"
+                    />
+                )
+            )}
+        </View>
+    );
 };
 
 const styles = StyleSheet.create({
-  mapContainer: { flex: 1, width: '100%', minHeight: 400 },
-  map:          { flex: 1, width: '100%', minHeight: 400 },
+    mapContainer: { flex: 1, width: '100%', minHeight: 400 },
+    map:          { flex: 1, width: '100%', minHeight: 400 },
 });
 
 export default MapComponent;
