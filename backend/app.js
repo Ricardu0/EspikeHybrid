@@ -1,7 +1,19 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
+// Inicializa o Azure Monitor Application Insights
+if (process.env.AZURE_APPINSIGHTS_CONNECTION_STRING) {
+    const { useAzureMonitor } = require("@azure/monitor-opentelemetry");
+    useAzureMonitor({
+        azureMonitorExporterOptions: {
+            connectionString: process.env.AZURE_APPINSIGHTS_CONNECTION_STRING
+        }
+    });
+}
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require("cors");
-const dotenv = require('dotenv');
 
 const { router: userRouter } = require('./controller/UserController');
 const authRoutes = require('./controller/AuthController');
@@ -11,8 +23,6 @@ const occurrenceRoutes = require('./controller/OcurrenceController');
 const areaRoutes = require('./controller/AreaController');
 const markerRoutes = require('./controller/MarkerController');
 const corsConfig = require('./config/CorsConfig');
-
-dotenv.config();
 
 const app = express();
 
