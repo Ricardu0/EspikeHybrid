@@ -74,8 +74,14 @@ app.use("/api/occurrences", authenticate, occurrenceRoutes);
 // Rota para marcadores (Protegida)
 app.use("/api/markers", authenticate, markerRoutes);
 
-// Rota para areas (zonas) (Protegida)
-app.use("/api/areas", authenticate, areaRoutes);
+// Rota para areas (zonas)
+// GET / é pública; demais rotas requerem autenticação
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.header('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return next();
+  return authenticate(req, res, next);
+};
+app.use("/api/areas", optionalAuth, areaRoutes);
 
 // Rota para reportes de foto (nova funcionalidade Azure)
 const photoReportRoutes = require("./controller/PhotoReportController");

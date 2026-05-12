@@ -17,16 +17,25 @@ router.post('/', async (req, res) => {
             });
         }
 
+        // Bloqueia usuários com score muito baixo
+        if (req.user && req.user.moralScore !== undefined && req.user.moralScore < 50) {
+            return res.status(403).json({
+                message: 'Seu score de moral é muito baixo para criar novas ocorrências.',
+            });
+        }
+
         const ocurrenceData = {
             description,
             occurrence_type,
             latitude,
             longitude,
+            user_id: req.user ? req.user.id : req.body.user_id, // Usar token, fallback pra body se por algum motivo for nulo em testes
             date_time: new Date(),
             status: 'ativo',
         };
 
-        const ocurrence = await OcurrenceService.createOcurrence(ocurrenceData);
+        const userType = req.user ? req.user.user_type : 'user';
+        const ocurrence = await OcurrenceService.createOcurrence(ocurrenceData, userType);
 
         console.log('Ocurrence criada:', ocurrence);
 
@@ -62,6 +71,11 @@ router.post('/', async (req, res) => {
         res.status(201).json({ ocurrence, marker });
     } catch (error) {
         console.error('Erro ao criar ocurrence e marcador:', error);
+        if (error.message === 'DAILY_LIMIT_EXCEEDED') {
+             return res.status(429).json({
+                 message: 'Você atingiu o limite diário de ocorrências (5 por dia). Tente novamente amanhã.',
+             });
+        }
         res.status(500).json({
             message: 'Erro interno ao criar ocurrence',
             error: error.message,
@@ -142,6 +156,31 @@ router.delete('/:id', async (req, res) => {
         console.error('Erro ao deletar ocurrence:', error);
         res.status(500).json({
             message: 'Erro interno ao deletar ocurrence',
+            error: error.message,
+        });
+    }
+});
+
+router.post('/:id/validate', async (req, res) => {
+    try {
+        if (!req.user || !req.user.id) {
+             return res.status(401).json({ message: 'Usuário não autenticado' });
+        }
+        
+        const { isValid } = req.body;
+        if (typeof isValid !== 'boolean') {
+            return res.status(400).json({ message: 'isValid deve ser um booleano' });
+        }
+
+        const validation = await OcurrenceService.validateOcurrence(req.params.id, req.user.id, isValid);
+        res.status(200).json(validation);
+    } catch (error) {
+        console.error('Erro ao validar ocurrence:', error);
+        if (error.message === 'Você não pode avaliar sua própria ocorrência') {
+            return res.status(400).json({ message: error.message });
+        }
+        res.status(500).json({
+            message: 'Erro ao validar ocurrence',
             error: error.message,
         });
     }

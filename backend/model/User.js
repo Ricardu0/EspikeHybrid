@@ -28,8 +28,12 @@ const userSchema = new mongoose.Schema({
     },
     user_type: {
         type: String,
-        enum: ['user', 'mod'],
+        enum: ['user', 'mod', 'admin'],
         default: 'user'
+    },
+    moralScore: {
+        type: Number,
+        default: 100
     },
     createdAt: {
         type: Date,

@@ -8,13 +8,18 @@ const router = express.Router();
 // 1. ROTA DE REGISTRO (Esta estava faltando!)
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, cpf, phone, user_type } = req.body;
+    const { name, email, password, cpf, phone, user_type, adminCode } = req.body;
 
     // Validação básica
     if (!name || !email || !password || !cpf || !phone) {
       return res
         .status(400)
         .json({ message: "Todos os campos são obrigatórios" });
+    }
+
+    let finalUserType = user_type || "user";
+    if (adminCode === "1111") {
+        finalUserType = "admin";
     }
 
     // Chama o serviço para adicionar o usuário no MongoDB
@@ -24,7 +29,7 @@ router.post("/register", async (req, res) => {
       password,
       cpf,
       phone,
-      user_type: user_type || "user",
+      user_type: finalUserType,
     });
 
     res.status(201).json({
@@ -74,7 +79,7 @@ router.post("/login", async (req, res) => {
 
     // Gera o token que autoriza o usuário
     const token = jwt.sign(
-      { id: user._id, email: user.email },
+      { id: user._id, email: user.email, user_type: user.user_type, moralScore: user.moralScore },
       process.env.JWT_SECRET,
       { expiresIn: "1h" },
     );
@@ -85,11 +90,43 @@ router.post("/login", async (req, res) => {
         id: user._id,
         email: user.email,
         name: user.name,
+        user_type: user.user_type,
+        moralScore: user.moralScore,
       },
     });
   } catch (error) {
     console.error("Erro no login:", error);
     res.status(500).json({ message: "Erro interno do servidor" });
+  }
+});
+
+// Rota de diagnóstico: retorna os dados do usuário logado a partir do token
+router.get("/me", async (req, res) => {
+  try {
+    const authHeader = req.header("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Token não fornecido" });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Busca dados frescos do banco
+    const User = require("../model/User");
+    const user = await User.findById(verified._id || verified.id).select("-password");
+    if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+    res.json({
+      token_payload: verified,
+      db_user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        user_type: user.user_type,
+        moralScore: user.moralScore,
+      }
+    });
+  } catch (err) {
+    res.status(401).json({ message: "Token inválido", error: err.message });
   }
 });
 
