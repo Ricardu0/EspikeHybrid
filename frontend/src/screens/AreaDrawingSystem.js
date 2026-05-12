@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 let Polygon, L;
 if (Platform.OS === "web") {
@@ -70,6 +71,25 @@ export const DrawingControls = ({
   showZones,
   setShowZones 
 }) => {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const userDataString = await AsyncStorage.getItem("userData");
+        if (userDataString) {
+          const user = JSON.stringify(userDataString);
+          if (userDataString.includes('"user_type":"admin"') || userDataString.includes('"user_type":"mod"')) {
+             setIsAdmin(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data", error);
+      }
+    };
+    checkAdmin();
+  }, []);
+
   if (Platform.OS !== "web") return null;
 
   return (
@@ -98,16 +118,18 @@ export const DrawingControls = ({
         <Text style={styles.zoneToggleText}>{showZones ? "Ocultar zonas" : "Mostrar zonas"}</Text>
       </TouchableOpacity>
       
-      <TouchableOpacity 
-        style={[styles.zoneToggle, { backgroundColor: drawingMode ? "#f44336" : "#4CAF50", marginTop: 6 }]} 
-        onPress={() => setDrawingMode(!drawingMode)}
-      >
-        <Text style={styles.zoneToggleText}>
-          {drawingMode ? "Cancelar Desenho" : "Desenhar Área"}
-        </Text>
-      </TouchableOpacity>
+      {isAdmin && (
+        <TouchableOpacity 
+          style={[styles.zoneToggle, { backgroundColor: drawingMode ? "#f44336" : "#4CAF50", marginTop: 6 }]} 
+          onPress={() => setDrawingMode(!drawingMode)}
+        >
+          <Text style={styles.zoneToggleText}>
+            {drawingMode ? "Cancelar Desenho" : "Desenhar Área"}
+          </Text>
+        </TouchableOpacity>
+      )}
       
-      {drawingMode && (
+      {drawingMode && isAdmin && (
         <TouchableOpacity 
           style={[styles.zoneToggle, { backgroundColor: "#2196F3", marginTop: 6 }]} 
           onPress={() => finishDrawing(areas, addNewArea)}

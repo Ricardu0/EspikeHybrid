@@ -314,7 +314,7 @@ const WebMap = ({ markers = [], areas = [], showZones = true, showHexagons = fal
           <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
           <HexagonLayer hexagonos={hexagonosVisiveis} mapComponents={mapComponents} showHexagons={showHexagons} />
 
-          {areas.map(area => <AreaPolygon key={area.id} area={area} Polygon={Polygon} onAreaClick={onAreaClick} />)}
+          {showZones && areas.map(area => <AreaPolygon key={area._id || area.id} area={area} Polygon={Polygon} onAreaClick={onAreaClick} />)}
           {currentPolygon.length > 0 && <Polygon positions={currentPolygon} pathOptions={{ fillColor: '#2196F3', color: '#2196F3', weight: 2, opacity: 0.9, fillOpacity: 0.25 }} />}
           {markers.map(marker => <OccurrenceMarker key={marker.id} marker={marker} showZones={showZones} L={L} Marker={Marker} Popup={Popup} Circle={Circle} onMarkerClick={onMarkerClick} />)}
           {geoStatus === GEO.OK && <UserLocationMarker position={userPos} L={L} Marker={Marker} Popup={Popup} />}

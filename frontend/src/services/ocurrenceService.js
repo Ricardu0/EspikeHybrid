@@ -105,8 +105,12 @@ export const occurrenceService = {
     } catch (error) {
       console.error('❌ Error creating occurrence:', error.message);
       
+      // Se o backend retornar 429 ou 403, repassa o erro para o usuário
+      if (error.response && (error.response.status === 429 || error.response.status === 403)) {
+          throw error;
+      }
+      
       // Fallback para desenvolvimento
-      console.log('🔄 Using fallback creation...');
       const fallbackData = {
         id: Date.now(),
         type: occurrenceData.type,
@@ -140,5 +144,15 @@ export const occurrenceService = {
         coordinate: { lat: -23.5515, lng: -46.6343 } 
       }
     ];
+  },
+
+  async validateOccurrence(id, isValid) {
+    try {
+      const response = await apiService.post(`${API_CONFIG.ENDPOINTS.OCCURRENCES}/${id}/validate`, { isValid });
+      return response;
+    } catch (error) {
+      console.error('❌ Error validating occurrence:', error.message);
+      throw error;
+    }
   }
 };

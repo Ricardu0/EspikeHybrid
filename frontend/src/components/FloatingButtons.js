@@ -27,18 +27,6 @@ const FloatingButtons = ({
         <Text style={styles.addOccurrenceButtonText}>＋</Text>
       </TouchableOpacity>
 
-      {/* Botão para modo desenho (apenas web) */}
-      {Platform.OS === "web" && (
-        <TouchableOpacity 
-          style={[styles.drawingButton, { backgroundColor: drawingMode ? "#f44336" : "#4CAF50" }]} 
-          onPress={() => setDrawingMode(!drawingMode)}
-        >
-          <Text style={styles.drawingButtonText}>
-            {drawingMode ? "✕" : "◯"}
-          </Text>
-        </TouchableOpacity>
-      )}
-
       {/* Botão menu */}
       <TouchableOpacity
         style={styles.menuButtonLeft}

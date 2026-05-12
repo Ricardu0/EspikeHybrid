@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { TYPE_CONFIG } from "../utils/helpers";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Legend = ({
                   showZones,
@@ -13,6 +14,24 @@ const Legend = ({
                   setShowHexagons,
                 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const raw = await AsyncStorage.getItem("userData");
+        if (raw) {
+          const userData = JSON.parse(raw);
+          if (userData.user_type === "admin" || userData.user_type === "mod") {
+            setIsAdmin(true);
+          }
+        }
+      } catch (e) {
+        console.warn("Legend: erro ao ler userData", e);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const handleZoneToggle = () => {
     const next = !showZones;
@@ -94,29 +113,66 @@ const Legend = ({
         <View style={styles.divider} />
 
         {/* CONTROLES DE VISIBILIDADE */}
-        <TouchableOpacity style={styles.toggleBtn} onPress={handleZoneToggle}>
-          <View style={[styles.statusDot, { backgroundColor: showZones ? "#4CAF50" : "#bbb" }]} />
-          <Text style={styles.toggleLabel}>{showZones ? "Zonas Ativas" : "Zonas Ocultas"}</Text>
+        <Text style={styles.sectionTitle}>Visibilidade</Text>
+
+        {/* Botão de toggle de Zonas — visível para todos */}
+        <TouchableOpacity
+          style={[styles.visibilityBtn, { borderColor: showZones ? "#1768C6" : "#bbb" }]}
+          onPress={handleZoneToggle}
+          activeOpacity={0.75}
+        >
+          <View style={[styles.visibilityIcon, { backgroundColor: showZones ? "#EBF3FF" : "#f0f0f0" }]}>
+            <Text style={{ fontSize: 14 }}>📍</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.visibilityLabel, { color: showZones ? "#1768C6" : "#999" }]}>
+              Áreas Avaliáveis
+            </Text>
+            <Text style={styles.visibilityStatus}>
+              {showZones ? "Exibindo no mapa" : "Ocultas no mapa"}
+            </Text>
+          </View>
+          {/* Switch visual */}
+          <View style={[styles.switchTrack, { backgroundColor: showZones ? "#1768C6" : "#ccc" }]}>
+            <View style={[styles.switchThumb, { alignSelf: showZones ? "flex-end" : "flex-start" }]} />
+          </View>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.toggleBtn, { marginTop: 6 }]} onPress={handleHexagonToggle}>
-          <View style={[styles.statusDot, { backgroundColor: showHexagons ? "#E53935" : "#bbb" }]} />
-          <Text style={styles.toggleLabel}>{showHexagons ? "Calor Ativo" : "Calor Oculto"}</Text>
+        <TouchableOpacity
+          style={[styles.visibilityBtn, { borderColor: showHexagons ? "#E53935" : "#bbb", marginTop: 8 }]}
+          onPress={handleHexagonToggle}
+          activeOpacity={0.75}
+        >
+          <View style={[styles.visibilityIcon, { backgroundColor: showHexagons ? "#FFEBEE" : "#f0f0f0" }]}>
+            <Text style={{ fontSize: 14 }}>🔥</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.visibilityLabel, { color: showHexagons ? "#E53935" : "#999" }]}>
+              Mapa de Calor
+            </Text>
+            <Text style={styles.visibilityStatus}>
+              {showHexagons ? "Visível no mapa" : "Oculto no mapa"}
+            </Text>
+          </View>
+          <View style={[styles.switchTrack, { backgroundColor: showHexagons ? "#E53935" : "#ccc" }]}>
+            <View style={[styles.switchThumb, { alignSelf: showHexagons ? "flex-end" : "flex-start" }]} />
+          </View>
         </TouchableOpacity>
 
-        {/* FERRAMENTAS WEB */}
-        {Platform.OS === "web" && (
+        {/* FERRAMENTAS DE ZONA — somente admin/mod */}
+        {Platform.OS === "web" && isAdmin && (
             <>
               <View style={styles.divider} />
+              <Text style={styles.sectionTitle}>🛠 Ferramentas Admin</Text>
               <TouchableOpacity
                   style={[styles.drawBtn, { backgroundColor: drawingMode ? "#f44336" : "#2196F3" }]}
                   onPress={() => setDrawingMode(!drawingMode)}
               >
-                <Text style={styles.drawBtnText}>{drawingMode ? "Cancelar" : "Mapear Área"}</Text>
+                <Text style={styles.drawBtnText}>{drawingMode ? "Cancelar" : "Mapear Zona"}</Text>
               </TouchableOpacity>
               {drawingMode && (
                   <TouchableOpacity style={styles.finishBtn} onPress={onFinishDrawing}>
-                    <Text style={styles.drawBtnText}>Salvar Polígono</Text>
+                    <Text style={styles.drawBtnText}>Salvar Zona</Text>
                   </TouchableOpacity>
               )}
             </>
@@ -178,6 +234,51 @@ const styles = StyleSheet.create({
   drawBtn: { paddingVertical: 8, borderRadius: 8, alignItems: "center" },
   finishBtn: { backgroundColor: "#4CAF50", paddingVertical: 8, borderRadius: 8, alignItems: "center", marginTop: 6 },
   drawBtnText: { color: "#fff", fontWeight: "bold", fontSize: 11 },
+
+  // Botões de visibilidade (toggle switch)
+  visibilityBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    backgroundColor: "#fafafa",
+  },
+  visibilityIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  visibilityLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  visibilityStatus: {
+    fontSize: 10,
+    color: "#aaa",
+    marginTop: 1,
+  },
+  switchTrack: {
+    width: 34,
+    height: 20,
+    borderRadius: 10,
+    padding: 2,
+    justifyContent: "center",
+  },
+  switchThumb: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#fff",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
 });
 
 export default Legend;

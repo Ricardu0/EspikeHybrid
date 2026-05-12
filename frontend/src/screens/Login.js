@@ -33,6 +33,9 @@ export default function Login() {
 
       if (response && response.token) {
         await AsyncStorage.setItem("userToken", response.token);
+        if (response.user) {
+          await AsyncStorage.setItem("userData", JSON.stringify(response.user));
+        }
         // Em caso de sucesso, vamos direto para a página inicial
         navigation.navigate("Initialpage");
       } else {

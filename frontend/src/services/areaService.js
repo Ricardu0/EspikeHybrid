@@ -1,29 +1,35 @@
 import { apiClient } from './apiService';
 
 export const areaService = {
-  // Buscar todas as áreas
+  // Buscar todas as áreas (o apiClient retorna o JSON direto, sem .data)
   async getAll() {
-    const response = await apiClient.get('/areas');
-    return response.data;
+    const result = await apiClient.get('/api/areas');
+    return Array.isArray(result) ? result : [];
   },
 
-  // Criar nova área
+  // Criar nova área (apenas admin/mod)
   async create(areaData) {
-    const response = await apiClient.post('/areas', areaData);
-    return response.data;
+    return await apiClient.post('/api/areas', areaData);
   },
 
   // Avaliar área
   async rateArea(areaId, ratingData) {
-    const response = await apiClient.post(`/areas/${areaId}/ratings`, ratingData);
-    return response.data;
+    return await apiClient.post(`/api/areas/${areaId}/rate`, ratingData);
   },
 
-  // Buscar áreas por localização
-  async getByBounds(northEast, southWest) {
-    const response = await apiClient.get(
-      `/areas/in-bounds?neLat=${northEast.lat}&neLng=${northEast.lng}&swLat=${southWest.lat}&swLng=${southWest.lng}`
-    );
-    return response.data;
-  }
+  // Buscar relatos da área
+  async getReports(areaId) {
+    const result = await apiClient.get(`/api/areas/${areaId}/reports`);
+    return Array.isArray(result) ? result : [];
+  },
+
+  // Adicionar relato
+  async addReport(areaId, comment) {
+    return await apiClient.post(`/api/areas/${areaId}/reports`, { comment });
+  },
+
+  // Votar em um relato (upvote/downvote)
+  async voteOnReport(areaId, reportId, isUpvote) {
+    return await apiClient.post(`/api/areas/${areaId}/reports/${reportId}/vote`, { isUpvote });
+  },
 };

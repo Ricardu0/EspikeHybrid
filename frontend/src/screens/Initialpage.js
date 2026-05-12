@@ -16,6 +16,7 @@ import AreaRatingForm  from '../components/AreaRatingForm';
 import Legend          from '../components/Legend';
 import { useOccurrences } from '../hooks/useOcurrences';
 import { useHexagonos }   from '../hooks/Usehexagonos';
+import { areaService }    from '../services/areaService';
 
 const Initialpage = ({ navigation }) => {
   const isScreenFocused = useIsFocused();
@@ -40,17 +41,20 @@ const Initialpage = ({ navigation }) => {
   const [areaRatingData, setAreaRatingData] = useState({
     overall: 0, risk: 0, lighting: 0, infrastructure: 0, policing: 0, comments: '',
   });
-  const [areas, setAreas] = useState([
-    {
-      id: 1,
-      name: 'Praça Central',
-      coordinates: [
-        [-23.5505, -46.6333], [-23.5515, -46.6333],
-        [-23.5515, -46.6343], [-23.5505, -46.6343],
-      ],
-      ratings: { overall: 4, risk: 3, lighting: 4, infrastructure: 5, policing: 2, comments: '' },
-    },
-  ]);
+  const [areas, setAreas] = useState([]);
+
+  // Carrega áreas do backend ao montar a tela
+  useEffect(() => {
+    const fetchAreas = async () => {
+      try {
+        const data = await areaService.getAll();
+        if (Array.isArray(data)) setAreas(data);
+      } catch (e) {
+        console.warn('Initialpage: erro ao carregar áreas', e);
+      }
+    };
+    fetchAreas();
+  }, []);
 
   const webviewRef = useRef();
 
@@ -113,14 +117,28 @@ const Initialpage = ({ navigation }) => {
     }
   };
 
-  const submitAreaRating = () => {
+  const submitAreaRating = async () => {
     if (!areaRatingData.overall) { Alert.alert('Erro', 'Avaliação geral é obrigatória'); return; }
-    setAreas(prev => prev.map(a =>
+    const areaId = selectedArea?._id || selectedArea?.id;
+    if (areaId && typeof areaId === 'string' && areaId.length === 24) {
+      // É um ID real do MongoDB — envia para API
+      try {
+        const updated = await areaService.rateArea(areaId, areaRatingData);
+        setAreas(prev => prev.map(a => (a._id === areaId || a.id === areaId) ? { ...a, ...updated } : a));
+        Alert.alert('Sucesso', 'Avaliação registrada!');
+      } catch (e) {
+        Alert.alert('Erro', 'Não foi possível salvar sua avaliação.');
+        return;
+      }
+    } else {
+      // Área local (mock) — só atualiza estado
+      setAreas(prev => prev.map(a =>
         a.id === selectedArea.id ? { ...a, ratings: areaRatingData } : a
-    ));
+      ));
+      Alert.alert('Sucesso', 'Avaliação registrada!');
+    }
     setShowAreaForm(false);
     setAreaRatingData({ overall: 0, risk: 0, lighting: 0, infrastructure: 0, policing: 0, comments: '' });
-    Alert.alert('Sucesso', 'Avaliação registrada!');
   };
 
   const handleAreaClick = (area) => {
@@ -137,21 +155,30 @@ const Initialpage = ({ navigation }) => {
     }
   };
 
-  const finishDrawing = () => {
+  const finishDrawing = async () => {
     if (currentPolygon.length < 3) {
-      Alert.alert('Erro', 'Um polígono precisa de pelo menos 3 pontos');
+      Alert.alert('Erro', 'Uma zona precisa de pelo menos 3 pontos');
       return;
     }
-    const newArea = {
-      id: Date.now(),
-      name: `Área ${areas.length + 1}`,
-      coordinates: [...currentPolygon, currentPolygon[0]],
-      ratings: { overall: 0, risk: 0, lighting: 0, infrastructure: 0, policing: 0, comments: '' },
-    };
-    setAreas(prev => [...prev, newArea]);
-    setCurrentPolygon([]);
-    setDrawingMode(false);
-    Alert.alert('Sucesso', 'Área criada! Agora você pode avaliá-la.');
+    const closedPolygon = [...currentPolygon, currentPolygon[0]];
+    const areaName = `Zona ${areas.length + 1}`;
+    try {
+      // Salva no banco de dados
+      const created = await areaService.create({
+        name: areaName,
+        coordinates: closedPolygon,
+      });
+      // Usa o objeto retornado pelo backend (tem _id real)
+      setAreas(prev => [...prev, created]);
+      setCurrentPolygon([]);
+      setDrawingMode(false);
+      Alert.alert('Sucesso', `Zona "${areaName}" criada e salva!`);
+    } catch (e) {
+      console.error('Erro ao salvar zona:', e);
+      // Mostra a mensagem exata do backend para facilitar diagnóstico
+      const msg = e?.message || 'Erro desconhecido';
+      Alert.alert('Erro ao salvar zona', `Detalhes: ${msg}\n\nSe aparecer "Acesso negado", faça logout e login novamente para atualizar suas permissões.`);
+    }
   };
 
   const handleWebViewMessage = (e) => {

@@ -19,6 +19,7 @@ export default function Register() {
     cpf: "",
     password: "",
     user_type: "user",
+    adminCode: "",
   });
   const [confirmPassword, setConfirmPassword] = useState("");
   const [aceitouTermos, setAceitouTermos] = useState(false);
@@ -178,6 +179,14 @@ export default function Register() {
       {errors.confirmPassword && (
         <Text style={styles.error}>{errors.confirmPassword}</Text>
       )}
+
+      {/* Código de Administrador */}
+      <TextInput
+        style={[styles.input, { marginTop: 10 }]}
+        placeholder="Código Admin (Opcional)"
+        value={user.adminCode}
+        onChangeText={(text) => updateField("adminCode", text)}
+      />
 
       {/* Checkbox de Termos */}
       <TouchableOpacity
