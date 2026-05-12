@@ -1,34 +1,43 @@
-// Cliente HTTP genérico e reutilizável
+import { API_CONFIG, REQUEST_TIMEOUT } from "../utils/constants";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 class ApiService {
-  constructor(baseURL) {
-    this.baseURL = baseURL;
+  constructor() {
+    // Agora sim ele vai respeitar o localhost que está no constants.js!
+    this.baseURL = API_CONFIG.BASE_URL;
   }
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+
+    // Pega o token salvo para você conseguir passar pelas rotas protegidas
+    const token = await AsyncStorage.getItem("userToken");
+
     const config = {
+      ...options,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
+        // Injeta o token se ele existir
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
-      ...options,
+      timeout: REQUEST_TIMEOUT,
     };
-
-    if (config.body && typeof config.body === 'object') {
-      config.body = JSON.stringify(config.body);
-    }
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`,
+        );
       }
 
-      const data = await response.json();
-      return data;
+      const text = await response.text();
+      return text ? JSON.parse(text) : {};
     } catch (error) {
-      console.error('API Request failed:', error);
+      console.error("API Request failed:", error);
       throw error;
     }
   }
@@ -37,19 +46,28 @@ class ApiService {
     return this.request(endpoint);
   }
 
-  post(endpoint, body) {
-    return this.request(endpoint, { method: 'POST', body });
+  post(endpoint, data) {
+    return this.request(endpoint, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 
-  put(endpoint, body) {
-    return this.request(endpoint, { method: 'PUT', body });
+  put(endpoint, data) {
+    return this.request(endpoint, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 
   delete(endpoint) {
-    return this.request(endpoint, { method: 'DELETE' });
+    return this.request(endpoint, {
+      method: "DELETE",
+    });
   }
 }
 
-// Instância global do serviço API
-export const apiClient = new ApiService(process.env.REACT_APP_API_URL || 'https://espike-backend.onrender.com/api');
-export const apiService = new ApiService(process.env.REACT_APP_API_URL || 'https://espike-backend.onrender.com/api');
+const instance = new ApiService();
+
+export const apiService = instance;
+export const apiClient = instance;

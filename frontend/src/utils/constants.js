@@ -1,11 +1,11 @@
-// Configurações da API
 export const API_CONFIG = {
-  BASE_URL: 'https://espike-backend.onrender.com/api',
+  BASE_URL: "http://localhost:5174", // Raiz do seu servidor local
   ENDPOINTS: {
-    OCCURRENCES: '/occurrences',
-
-  }
+    OCCURRENCES: "/api/occurrences", // <--- Adicione o /api aqui!
+    USERS: "/api/users",
+    LOGIN: "/auth/login",
+    REGISTER: "/auth/register",
+  },
 };
 
-// Timeouts
 export const REQUEST_TIMEOUT = 10000;

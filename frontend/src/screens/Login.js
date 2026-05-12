@@ -1,22 +1,50 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { apiService } from "../services/apiService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const navigation = useNavigation(); // Hook para navegação
+  const [errorMessage, setErrorMessage] = useState(""); // Novo estado para o erro visual
+  const navigation = useNavigation();
 
-  const handleLogin = () => {
-    // Validação básica
+  const handleLogin = async () => {
+    // Limpa qualquer erro anterior assim que o usuário clica de novo
+    setErrorMessage("");
+
     if (!email || !password) {
-      Alert.alert("Erro", "Por favor, preencha todos os campos");
+      setErrorMessage("Por favor, preencha todos os campos.");
       return;
     }
 
-    // Aqui você pode adicionar a lógica de autenticação
-    // Por enquanto, vamos navegar direto para o Initialpage
-    navigation.navigate("Initialpage");
+    try {
+      const response = await apiService.post("/auth/login", {
+        email,
+        password,
+      });
+
+      if (response && response.token) {
+        await AsyncStorage.setItem("userToken", response.token);
+        // Em caso de sucesso, vamos direto para a página inicial
+        navigation.navigate("Initialpage");
+      } else {
+        setErrorMessage("Falha na autenticação. Tente novamente.");
+      }
+    } catch (error) {
+      console.error("Erro no login:", error);
+      // Aqui disparamos a mensagem que o usuário vai ver na tela
+      setErrorMessage(
+        "E-mail ou senha incorretos. Verifique seus dados e tente novamente.",
+      );
+    }
   };
 
   return (
@@ -26,35 +54,45 @@ export default function Login() {
         <Text style={styles.subtitle}>Coloque seu email e senha abaixo</Text>
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, errorMessage ? styles.inputError : null]}
           placeholder="Email"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            setErrorMessage(""); // Tira o erro quando a pessoa começa a digitar de novo
+          }}
           autoCapitalize="none"
           keyboardType="email-address"
         />
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, errorMessage ? styles.inputError : null]}
           placeholder="Senha"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            setErrorMessage(""); // Tira o erro quando a pessoa começa a digitar de novo
+          }}
           secureTextEntry
         />
 
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={handleLogin}
-        >
+        {/* Bloco condicional que exibe a mensagem vermelha na tela */}
+        {errorMessage ? (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        ) : null}
+
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
           <Text style={styles.buttonText}>Entrar</Text>
         </TouchableOpacity>
 
-        {/* Botão de voltar para Home */}
+        {/* Botão de cadastro */}
         <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.navigate("Initialpage")}
+          style={styles.registerButton}
+          onPress={() => navigation.navigate("Register")}
         >
-          <Text style={styles.backButtonText}>Voltar para Home</Text>
+          <Text style={styles.registerButtonText}>
+            Não tem uma conta? Cadastre-se
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -64,15 +102,64 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "space-between", backgroundColor: "white", padding: 20 },
-  loginContainer: { flex: 1, justifyContent: "center", maxWidth: 400, alignSelf: "center", width: "100%" },
-  title: { fontSize: 28, fontWeight: "bold", textAlign: "center", marginBottom: 10 },
-  subtitle: { textAlign: "center", marginBottom: 20 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, marginBottom: 10 },
-  button: { backgroundColor: "#007bff", padding: 15, borderRadius: 8, alignItems: "center", marginTop: 10 },
-  buttonText: { color: "#fff", fontWeight: "bold" },
-  backButton: { marginTop: 15, alignItems: "center" },
-  backButtonText: { color: "#007bff" },
-  footer: { textAlign: "center", paddingVertical: 20, fontSize: 12, color: "#999" },
-
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+    backgroundColor: "white",
+    padding: 20,
+  },
+  loginContainer: {
+    flex: 1,
+    justifyContent: "center",
+    maxWidth: 400,
+    alignSelf: "center",
+    width: "100%",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  subtitle: {
+    textAlign: "center",
+    marginBottom: 20,
+    color: "#666",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    backgroundColor: "#fafafa",
+  },
+  // Novo estilo: muda a cor da borda se der erro
+  inputError: {
+    borderColor: "#d32f2f",
+  },
+  // Novo estilo: o texto da mensagem de alerta na tela
+  errorText: {
+    color: "#d32f2f", // Um tom de vermelho profissional (Material Design)
+    textAlign: "center",
+    marginBottom: 10,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  button: {
+    backgroundColor: "#007bff",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 5,
+  },
+  buttonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  registerButton: { marginTop: 20, alignItems: "center" },
+  registerButtonText: { color: "#007bff", fontWeight: "600" },
+  footer: {
+    textAlign: "center",
+    paddingVertical: 20,
+    fontSize: 12,
+    color: "#999",
+  },
 });
